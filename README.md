@@ -70,9 +70,6 @@ For GPU training, install the CUDA build of PyTorch from https://pytorch.org fir
 
 .venv/Scripts/python.exe -m src.train --model mobilenet_v3_small   # train another model
 .venv/Scripts/python.exe -m src.compare_models                     # compare all trained models
-
-.venv/Scripts/python.exe -m scripts.build_space                    # build the online demo folder
-.venv/Scripts/python.exe -m scripts.upload_space --space USER/NAME  # upload it (after: hf auth login)
 ```
 
 Real smear photos: BBBC041 P. vivax Malaria Blood Smear Dataset by Jane Hung,

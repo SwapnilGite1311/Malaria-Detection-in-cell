@@ -4,8 +4,6 @@ cell_images/
 # Real smear sample from BBBC041 (re-download with: python -m scripts.fetch_real_smears)
 real_smears/
 
-# Built deployment folder (recreate with: python -m scripts.build_space)
-deploy/
 
 # Virtual environment (recreate with the steps in README)
 .venv/

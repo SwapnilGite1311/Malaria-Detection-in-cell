@@ -4,6 +4,25 @@ Plain-language notes for revising the project and answering questions about it.
 
 ---
 
+## Which models are pretrained?
+
+**We trained all 4 models ourselves** on the 22,336 Kaggle training cells. The difference
+is where each one *started*:
+
+| Model | Starting point | Meaning |
+|---|---|---|
+| MobileNetV3-Small | Pretrained on ImageNet | Fine-tuned by us (transfer learning) |
+| EfficientNet-B0 | Pretrained on ImageNet | Fine-tuned by us (transfer learning) |
+| ResNet18 | Pretrained on ImageNet | Fine-tuned by us (transfer learning) |
+| Simple CNN | Random numbers | Trained from scratch by us, no prior knowledge |
+
+"Pretrained" means someone (the PyTorch team) already trained the model on ImageNet's
+1.2 million everyday photos, so it already knows edges, shapes and textures. We
+downloaded those starting weights and taught the model malaria cells. Nobody gave us a
+ready-made malaria model.
+
+---
+
 ## The project in one paragraph
 
 A doctor looks at a blood smear under a microscope and counts how many red blood cells
@@ -423,7 +442,7 @@ The three pretrained models land close to the experts. The simple CNN calls roug
 - Speeds were measured on this laptop (CPU: one cell at a time; GPU: batches of 64).
 
 **Decision:** the app now starts with MobileNetV3-Small. It was the best on real photos,
-is fastest on the free CPU of the online demo, and has a 6 MB file. The other models
+is the fastest on a normal CPU, and has a 6 MB file. The other models
 stay available in the sidebar's model picker (Task 6).
 
 **Python to revise:** `argparse` for command-line options, `if/elif` returning different
@@ -442,35 +461,6 @@ unpacking into `nn.Sequential(*blocks)`, `time.perf_counter`, `lambda` for forma
   weakness, which the test set hid.
 - *Why is MobileNet so fast?* It uses "depthwise separable convolutions", which split one
   big calculation into two much cheaper ones.
-
----
-
-## Task 10: Online demo (`scripts/build_space.py`, `scripts/upload_space.py`)
-
-**What:** Everything needed to put the app online as a free **Hugging Face Space**, so
-anyone can open it from a link without installing anything.
-
-**How it works**
-- `build_space.py` copies only what the app needs (code, all 4 trained models, sample
-  smears, scores) into `deploy/hf_space/` (about 70 MB)
-- A **Dockerfile** describes a small Linux computer that installs Python and the
-  libraries, then starts the app on port 7860 (the port Hugging Face expects)
-- Free Spaces have no GPU, so we install the **CPU-only version of PyTorch**, which is
-  much smaller to download
-- Before uploading, we ran the app from that folder with the GPU hidden, to prove it
-  works on its own and on CPU only
-
-**Steps to publish**
-1. Create a free account at huggingface.co
-2. Run `hf auth login` and paste your own access token
-3. `python -m scripts.build_space`
-4. `python -m scripts.upload_space --space YOUR_USERNAME/malaria-smear-analyzer`
-
-**Cross-questions**
-- *What is Docker?* A way to package an app with everything it needs, so it runs the
-  same on any computer.
-- *Why not include the real BBBC041 photos in the demo?* Their licence is
-  non-commercial with attribution, and the demo doesn't need them.
 
 ---
 
