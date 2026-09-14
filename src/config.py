@@ -18,7 +18,10 @@ BATCH_SIZE = 64
 EPOCHS = 5
 LEARNING_RATE = 1e-4  # small steps, so we gently adjust what the model already knows
 LEARNING_RATE_FROM_SCRATCH = 1e-3  # the simple CNN starts knowing nothing
-MODEL_PATH = MODELS_DIR / "best_model.pth"
+MODEL_PATH = MODELS_DIR / "best_model.pth"  # ResNet18's weights
+# The app starts with this model: it did best on real smear photos (see PROJECT_NOTES, Task 9)
+DEFAULT_MODEL = "mobilenet_v3_small"
+COMPARISON_FILE = OUTPUTS_DIR / "comparison" / "model_comparison.json"
 
 # Decisions: a cell is called infected only when the model is at least 80% sure.
 # Healthy cells far outnumber infected ones, so even a few false alarms inflate

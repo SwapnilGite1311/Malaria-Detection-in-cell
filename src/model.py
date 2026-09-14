@@ -7,6 +7,14 @@ from src import config
 
 MODEL_NAMES = ["simple_cnn", "mobilenet_v3_small", "efficientnet_b0", "resnet18"]
 
+# Names shown in the app's model picker
+MODEL_LABELS = {
+    "mobilenet_v3_small": "MobileNetV3-Small (recommended)",
+    "efficientnet_b0": "EfficientNet-B0",
+    "resnet18": "ResNet18",
+    "simple_cnn": "Simple CNN (no pretraining)",
+}
+
 
 class SimpleCNN(nn.Module):
     """A small network trained from scratch (no pretraining), as a baseline.

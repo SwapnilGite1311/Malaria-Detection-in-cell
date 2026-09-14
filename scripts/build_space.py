@@ -11,6 +11,7 @@ import json
 import shutil
 
 from src import config
+from src.model import MODEL_NAMES, model_path
 
 SPACE_DIR = config.PROJECT_DIR / "deploy" / "hf_space"
 
@@ -22,8 +23,8 @@ FILES_TO_COPY = [
     "src/model.py",
     "src/gradcam.py",
     "src/smear.py",
-    "models/best_model.pth",
-    "outputs/test_results.json",  # the app's sidebar shows these scores
+    "outputs/test_results.json",
+    "outputs/comparison/model_comparison.json",  # the app's sidebar shows these scores
 ]
 
 REQUIREMENTS = """\
@@ -83,11 +84,11 @@ short_description: Finds red blood cells and flags malaria parasites
 # 🔬 Malaria Smear Analyzer
 
 Upload a microscope image of a thin blood smear. The app finds each red blood cell,
-checks it for the malaria parasite with a fine-tuned ResNet18, and reports the
-parasitemia (percentage of infected cells). Grad-CAM heatmaps show where the model looked.
+checks it for the malaria parasite, and reports the parasitemia (percentage of
+infected cells). Grad-CAM heatmaps show where the model looked.
 
-**Test results (2,609 unseen cells):** accuracy {accuracy:.2%}, sensitivity
-{sensitivity:.2%}, specificity {specificity:.2%}.
+Pick between 4 trained models in the sidebar (MobileNetV3-Small, EfficientNet-B0,
+ResNet18, and a simple CNN without pretraining) to compare their decisions on the same image.
 
 Try one of the built-in sample smears if you don't have an image.
 
@@ -107,17 +108,23 @@ def main():
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(config.PROJECT_DIR / relative, target)
 
+    # Every trained model, so the online model picker offers the same choices
+    for name in MODEL_NAMES:
+        if model_path(name).exists():
+            target = SPACE_DIR / model_path(name).relative_to(config.PROJECT_DIR)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(model_path(name), target)
+
     smear_target = SPACE_DIR / "sample_smears"
     smear_target.mkdir(parents=True)
     for smear in sorted((config.PROJECT_DIR / "sample_smears").glob("*.png")):
         shutil.copy2(smear, smear_target / smear.name)
 
-    results = json.loads((config.PROJECT_DIR / "outputs" / "test_results.json").read_text())
     (SPACE_DIR / "requirements.txt").write_text(REQUIREMENTS)
     (SPACE_DIR / "Dockerfile").write_text(DOCKERFILE)
     (SPACE_DIR / ".streamlit").mkdir()
     (SPACE_DIR / ".streamlit" / "config.toml").write_text(STREAMLIT_CONFIG)
-    (SPACE_DIR / "README.md").write_text(SPACE_README.format(**results), encoding="utf-8")
+    (SPACE_DIR / "README.md").write_text(SPACE_README, encoding="utf-8")
 
     total_mb = sum(p.stat().st_size for p in SPACE_DIR.rglob("*") if p.is_file()) / 1e6
     print(f"Built {SPACE_DIR} ({total_mb:.1f} MB)")

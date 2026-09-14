@@ -7,9 +7,26 @@ from PIL import Image
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+from torchvision import models
 
 from src import config
 from src.dataset import eval_transform
+from src.model import SimpleCNN
+
+
+def target_layer(model):
+    """The last image-reading layer of each model type.
+
+    That layer still keeps a rough map of positions, while already understanding
+    "parasite-like" shapes, which is exactly what a heatmap needs.
+    """
+    if isinstance(model, models.ResNet):
+        return model.layer4[-1]
+    if isinstance(model, (models.MobileNetV3, models.EfficientNet)):
+        return model.features[-1]
+    if isinstance(model, SimpleCNN):
+        return model.features[-2]  # the last ReLU, before the final max pool shrinks the map
+    raise TypeError(f"No Grad-CAM layer defined for {type(model).__name__}")
 
 
 def gradcam_overlay(model, cell_rgb, target_class):
@@ -17,9 +34,7 @@ def gradcam_overlay(model, cell_rgb, target_class):
     device = next(model.parameters()).device
     input_tensor = eval_transform(Image.fromarray(cell_rgb)).unsqueeze(0).to(device)
 
-    # layer4 is ResNet18's last block of image-reading layers: it still keeps
-    # a rough map of positions, while already understanding "parasite-like" shapes
-    with GradCAM(model=model, target_layers=[model.layer4[-1]]) as cam:
+    with GradCAM(model=model, target_layers=[target_layer(model)]) as cam:
         heatmap = cam(input_tensor=input_tensor,
                       targets=[ClassifierOutputTarget(target_class)])[0]
 

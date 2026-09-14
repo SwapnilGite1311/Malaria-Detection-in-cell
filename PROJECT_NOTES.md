@@ -225,7 +225,19 @@ middle, because there is no single suspicious spot.
 - **Single cell:** upload one cell image, then see the verdict, infection probability,
   a review warning if the model is unsure, and the heatmap
 
-The sidebar shows the model's test scores.
+**Model picker (sidebar):** choose between the 4 trained models. It starts with
+MobileNetV3-Small, the best on real photos (Task 9). Below the picker, the sidebar shows
+that model's test-set and real-photo scores, file size and CPU speed. Picking the
+simple CNN shows a warning that it's only there for comparison. Cell detection is the
+same for every model; only the infected/healthy decisions change. The CSV report
+records which model was used.
+
+**Grad-CAM for every model:** each model type has a different "last image-reading
+layer" (`target_layer` in `src/gradcam.py`): `layer4` for ResNet18, the last `features`
+block for MobileNetV3 and EfficientNet, and the last ReLU for the simple CNN.
+
+**Caching with a model picker:** results are cached per image *and* per model name, so
+switching models never shows the previous model's answers.
 
 **How Streamlit works:** every time you click something, Streamlit re-runs the whole
 script from top to bottom. `@st.cache_resource` makes sure the model loads only once
@@ -236,18 +248,23 @@ reachable from this computer.
 
 **Python to revise:** decorators (`@st.cache_resource`), `with column:` blocks,
 `i % 4` to place cards in a 4-column grid, `io.StringIO` + `csv.writer`, early
-`return` to stop a function.
+`return` to stop a function, `isinstance` checks, `next(generator, None)` to find the
+first match or nothing, `format_func=dict.get` to show friendly names in a dropdown.
 
 **Cross-questions**
 - *Why Streamlit?* It turns a Python script into a web app without HTML or JavaScript.
 - *Why limit heatmaps to 12?* Grad-CAM is slower than a normal prediction.
+- *Why a model picker?* It shows the comparison live: the same image, different models,
+  different decisions. And anyone can check our claim that MobileNetV3 is the best choice.
+- *Why does the cell count stay the same when you switch models?* Cells are found by
+  OpenCV rules, not by the AI model. The model only decides infected or healthy.
 
 ---
 
 ## Task 7: System audit and automated tests (`tests/test_system.py`)
 
-**What:** 27 automated tests check the entire system with one command:
-`python -m pytest -v`. They take about 45 seconds.
+**What:** 31 automated tests check the entire system with one command:
+`python -m pytest -v`. They take about 70 seconds.
 
 | Area | What the tests check |
 |---|---|
@@ -255,7 +272,8 @@ reachable from this computer.
 | Model | Accuracy above 93% on a sample of test cells |
 | Detection | Empty, white, black and tiny images → 0 cells; camera noise → 0 cells |
 | Detection | Exact counts on the 3 demo smears; JPEG; dark background; uneven lighting; 0.5× and 3× zoom; touching cells |
-| Grad-CAM | Heatmap has the right size and format |
+| Grad-CAM | Heatmap has the right size and format, for all 4 models |
+| Model picker | Starts on MobileNetV3; switching to every model analyses smear_1 without errors |
 | App | Broken files don't crash it; RGBA/grayscale/palette images load; CSV report; single-cell prediction; the app itself runs and shows 23 cells for smear_1 |
 | Real photos | On 40 expert-labelled photos: cells found ≥ 65%, boxes correct ≥ 65%, sensitivity ≥ 85%, specificity ≥ 95% |
 
@@ -276,7 +294,7 @@ reachable from this computer.
 (one test, many inputs), `monkeypatch` (temporarily change a setting), `assert`.
 
 **Cross-questions**
-- *How do you know it works?* 27 automated tests, including tricky images like dark
+- *How do you know it works?* 31 automated tests, including tricky images like dark
   backgrounds, noise, compression and touching cells, plus 40 real photos.
 - *Why write tests?* After changing code, one command proves nothing else broke.
   The first run of these tests caught 3 real bugs.
@@ -385,6 +403,16 @@ then compare with `python -m src.compare_models`.
    training data can't tell you how a model handles new labs.
 4. **On real photos, MobileNetV3 was best:** parasitemia error 1.9 points vs 4.2 for ResNet18.
 
+**Example: the same real photos, four models** (a good live demo with the model picker)
+
+| Real photo | Experts | MobileNetV3 | EfficientNet-B0 | ResNet18 | Simple CNN |
+|---|---|---|---|---|---|
+| `34f334e6…` | 6 of 38 infected (15.8%) | 18.2% | 20.5% | 15.9% | **47.7%** ❌ |
+| `8874ea02…` | 5 of 49 infected (10.2%) | 10.0% | 10.0% | 10.0% | **30.0%** ❌ |
+
+The three pretrained models land close to the experts. The simple CNN calls roughly
+3 times too many cells infected.
+
 **Be careful with these numbers**
 - Each model was trained once. Another run with different randomness could shift
   scores by around half a percent, so small gaps (like 96.0% vs 96.2%) aren't meaningful.
@@ -394,9 +422,9 @@ then compare with `python -m src.compare_models`.
   several percent.
 - Speeds were measured on this laptop (CPU: one cell at a time; GPU: batches of 64).
 
-**Recommendation:** switch the app to MobileNetV3-Small. It was the best on real photos,
-is fastest on the free CPU of the online demo, and has a 6 MB file. Grad-CAM would need
-to use its last feature layer instead of ResNet18's `layer4`.
+**Decision:** the app now starts with MobileNetV3-Small. It was the best on real photos,
+is fastest on the free CPU of the online demo, and has a 6 MB file. The other models
+stay available in the sidebar's model picker (Task 6).
 
 **Python to revise:** `argparse` for command-line options, `if/elif` returning different
 objects, a class inheriting from `nn.Module` with `__init__` and `forward`, `*args`
@@ -423,8 +451,8 @@ unpacking into `nn.Sequential(*blocks)`, `time.perf_counter`, `lambda` for forma
 anyone can open it from a link without installing anything.
 
 **How it works**
-- `build_space.py` copies only what the app needs (code, trained model, sample smears,
-  test scores) into `deploy/hf_space/` (about 46 MB)
+- `build_space.py` copies only what the app needs (code, all 4 trained models, sample
+  smears, scores) into `deploy/hf_space/` (about 70 MB)
 - A **Dockerfile** describes a small Linux computer that installs Python and the
   libraries, then starts the app on port 7860 (the port Hugging Face expects)
 - Free Spaces have no GPU, so we install the **CPU-only version of PyTorch**, which is

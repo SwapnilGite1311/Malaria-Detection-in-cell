@@ -147,9 +147,13 @@ def test_touching_cells_are_separated(monkeypatch, splits):
 
 # ---------- Grad-CAM ----------
 
-@needs_model
-def test_gradcam_heatmap(model, splits):
+@pytest.mark.parametrize("name", ["simple_cnn", "mobilenet_v3_small", "efficientnet_b0", "resnet18"])
+def test_gradcam_heatmap_for_every_model(device, splits, name):
     from src.gradcam import gradcam_overlay
+    from src.model import load_trained_model, model_path
+    if not model_path(name).exists():
+        pytest.skip(f"train it first: python -m src.train --model {name}")
+    model = load_trained_model(device, name)
     path, label = splits["test"][0]
     overlay = gradcam_overlay(model, np.array(Image.open(path).convert("RGB")), label)
     assert overlay.shape == (config.IMAGE_SIZE, config.IMAGE_SIZE, 3)
@@ -176,7 +180,8 @@ def test_unusual_image_formats_load_as_rgb(mode):
 def test_csv_report(model, device, smear_1):
     from app import build_csv_report
     results, summary, _ = analyze_smear(smear_1[0], model, device)
-    rows = build_csv_report(results, summary).strip().splitlines()
+    rows = build_csv_report(results, summary, "resnet18").strip().splitlines()
+    assert rows[0] == "model,ResNet18"
     assert rows[-1].startswith(str(len(results)))  # one row per cell, numbered from 1
 
 
@@ -215,7 +220,25 @@ def test_app_analyses_a_sample_smear():
     app = AppTest.from_file(str(config.PROJECT_DIR / "app.py"), default_timeout=180)
     app.run()
     assert not app.exception
-    app.selectbox[0].select("smear_1.png").run()
+    app.selectbox(key="sample").select("smear_1.png").run()
     assert not app.exception
     metrics = {m.label: m.value for m in app.metric}
     assert metrics["Cells found"] == "23"
+
+
+@needs_model
+def test_app_model_picker():
+    from streamlit.testing.v1 import AppTest
+    from app import available_models
+    app = AppTest.from_file(str(config.PROJECT_DIR / "app.py"), default_timeout=300)
+    app.run()
+    picker = app.selectbox(key="model")
+    assert picker.value == (config.DEFAULT_MODEL if config.DEFAULT_MODEL in available_models()
+                            else available_models()[0])
+
+    app.selectbox(key="sample").select("smear_1.png").run()
+    for name in available_models():  # every model must analyse the smear without errors
+        app.selectbox(key="model").select(name).run()
+        assert not app.exception, name
+        assert app.selectbox(key="model").value == name
+        assert {m.label: m.value for m in app.metric}["Cells found"] == "23"

@@ -1,14 +1,16 @@
 # 🔬 Malaria Smear Analyzer
 
 Finds red blood cells in a microscope image of a blood smear, checks each cell for the
-malaria parasite with a fine-tuned ResNet18, and reports the **parasitemia** (the
-percentage of infected cells). Grad-CAM heatmaps show where the model looked.
+malaria parasite, and reports the **parasitemia** (the percentage of infected cells).
+Grad-CAM heatmaps show where the model looked. A sidebar model picker switches between
+4 trained models (MobileNetV3-Small by default) to compare their decisions.
 
 > Student project for learning purposes. Not a medical device.
 
 ## Results
 
-A cell is called infected when the model is at least 80% sure.
+A cell is called infected when the model is at least 80% sure. The two tables below
+are for ResNet18; see the model comparison for all 4 models.
 
 **Kaggle test set** (2,609 unseen single-cell images, *P. falciparum*)
 
@@ -36,7 +38,9 @@ A cell is called infected when the model is at least 80% sure.
 | Simple CNN (from scratch) | 0.39 M | 94.0% | 29.3 pts | 44 ms |
 | MobileNetV3-Small | 1.52 M | 96.2% | 1.9 pts | 8.5 ms |
 | EfficientNet-B0 | 4.01 M | 96.6% | 2.0 pts | 63 ms |
-| ResNet18 (used in app) | 11.18 M | 96.0% | 4.2 pts | 85 ms |
+| ResNet18 | 11.18 M | 96.0% | 4.2 pts | 85 ms |
+
+MobileNetV3-Small is the app's default model.
 
 ## Setup
 
@@ -62,7 +66,7 @@ For GPU training, install the CUDA build of PyTorch from https://pytorch.org fir
 
 .venv/Scripts/python.exe -m scripts.fetch_real_smears   # download 40 real photos (~10 MB)
 .venv/Scripts/python.exe -m src.real_eval               # score the system on them
-.venv/Scripts/python.exe -m pytest -v                   # run the 27 automated tests (~45 s)
+.venv/Scripts/python.exe -m pytest -v                   # run the 31 automated tests (~70 s)
 
 .venv/Scripts/python.exe -m src.train --model mobilenet_v3_small   # train another model
 .venv/Scripts/python.exe -m src.compare_models                     # compare all trained models
