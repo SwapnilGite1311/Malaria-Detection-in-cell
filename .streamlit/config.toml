@@ -1,0 +1,8 @@
+[browser]
+# Don't send anonymous usage statistics to Streamlit
+gatherUsageStats = false
+
+[server]
+# Only this computer can open the app (not other devices on the network)
+address = "localhost"
+headless = true
